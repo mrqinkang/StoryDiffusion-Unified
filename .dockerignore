@@ -1,0 +1,23 @@
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Database
+*.db
+
+# Generated
+generated_novels/
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp

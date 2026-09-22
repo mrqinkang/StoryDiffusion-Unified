@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoryDiffusion 小说漫画工作室</title>
+  <link rel="stylesheet" href="/css/style.css?v=2">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <h1>📖 StoryDiffusion 小说漫画工作室</h1>
+      <p class="subtitle">AI 小说创作 · 漫画生成 · 小说自动转漫画</p>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tabs-nav" role="tablist">
+      <button class="tab-btn active" data-tab="novel" role="tab">
+        <span class="tab-icon">📝</span> 生成小说
+      </button>
+      <button class="tab-btn" data-tab="comic" role="tab">
+        <span class="tab-icon">🎨</span> 生成漫画
+      </button>
+      <button class="tab-btn" data-tab="pipeline" role="tab">
+        <span class="tab-icon">🔗</span> 小说→漫画
+      </button>
+      <button class="tab-btn" data-tab="drafts" role="tab">
+        <span class="tab-icon">📂</span> 草稿箱
+      </button>
+      <button class="tab-btn" data-tab="xhs" role="tab">
+        <span class="tab-icon">🛍️</span> 小红书带货
+      </button>
+    </nav>
+
+    <!-- ============================================================ -->
+    <!-- Tab 1: 生成小说 -->
+    <!-- ============================================================ -->
+    <div class="tab-content active" id="tab-novel" role="tabpanel">
+
+      <!-- LLM 配置区域 -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">⚙️ LLM 配置</div>
+        <div class="two-col">
+          <div class="form-group">
+            <label>LLM 接口类型</label>
+            <select id="novel-llm-interface">
+              <option value="OpenAI">OpenAI 兼容</option>
+              <option value="DeepSeek">DeepSeek</option>
+              <option value="Gemini">Gemini</option>
+              <option value="阿里云百炼">阿里云百炼</option>
+              <option value="Ollama">Ollama</option>
+            </select>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+              Gemini 模型名示例: gemini-2.0-flash 或 models/gemini-2.0-flash<br>
+              阿里云百炼 模型名示例: qwen-max / qwen-plus
+            </div>
+          </div>
+          <div class="form-group">
+            <label>模型名称</label>
+            <input type="text" id="novel-llm-model" value="deepseek-v4-flash" placeholder="gpt-4 / deepseek-v4-flash / gemini-2.0-flash">
+          </div>
+          <div class="form-group">
+            <label>API 地址</label>
+            <input type="text" id="novel-llm-url" value="https://api.deepseek.com/v1" placeholder="https://api.openai.com/v1">
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+              Gemini 默认可不填（使用官方 endpoint），自定义需填写完整地址如 https://xxx.generativelanguage.googleapis.com
+            </div>
+          </div>
+          <div class="form-group">
+            <label>API Key</label>
+            <input type="password" id="novel-llm-key" placeholder="sk-..." value="">
+          </div>
+        </div>
+
+        <!-- LLM 高级参数 (折叠) -->
+        <div class="collapsible-header" onclick="toggleCollapsible(this)" style="margin-top:8px">
+          <span style="font-size:0.85rem;color:var(--text-secondary)">⚡ LLM 高级参数</span>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="collapsible-body">
+          <div class="two-col" style="margin-top:8px">
+            <div class="form-group">
+              <label>Temperature (随机性)</label>
+              <input type="number" id="novel-temperature" value="0.7" min="0" max="2" step="0.1">
+            </div>
+            <div class="form-group">
+              <label>Max Tokens (每次最大输出)</label>
+              <input type="number" id="novel-max-tokens" value="8192" min="256" max="65536" step="256">
+            </div>
+          </div>
+        </div>
+
+        <!-- Embedding 配置 (折叠) -->
+        <div class="collapsible-header" onclick="toggleCollapsible(this)" style="margin-top:4px">
+          <span style="font-size:0.85rem;color:var(--text-secondary)">📚 Embedding 配置（角色一致性，默认 Ollama + BGE）</span>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="collapsible-body open">
+          <div class="two-col" style="margin-top:8px">
+            <div class="form-group">
+              <label>接口类型</label>
+              <select id="novel-emb-interface">
+                <option value="Local BGE" selected>本地 BGE（使用已有模型文件，无需下载）</option>
+                <option value="Ollama">Ollama（推荐，零依赖）</option>
+                <option value="OpenAI">OpenAI 兼容（SiliconFlow 等）</option>
+                <option value="Gemini">Gemini</option>
+              </select>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px" id="novel-emb-hint">
+                Ollama 方案：安装 ollama → 执行 <code>ollama pull bge-m3</code> 即可使用
+              </div>
+            </div>
+            <div class="form-group">
+              <label>模型名称</label>
+              <input type="text" id="novel-emb-model" value="D:\llmdemo\rag_system\rag_system\models\bge-large-zh-v1.5" placeholder="模型名或 HuggingFace ID">
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+                支持 HuggingFace 模型 ID（如 <code>BAAI/bge-large-zh-v1.5</code>）或本地文件夹路径
+              </div>
+            </div>
+            <div class="form-group">
+              <label>API 地址</label>
+              <input type="text" id="novel-emb-url" value="http://localhost:11434" placeholder="http://localhost:11434">
+            </div>
+            <div class="form-group">
+              <label>API Key（留空）</label>
+              <input type="password" id="novel-emb-key" value="" placeholder="Ollama 本地服务不需要 Key">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 模板预设 + 引导创作 -->
+      <div class="template-bar">
+        <span class="template-label">📋 一键模板：</span>
+        <button class="btn btn-template" data-template="玄幻修仙">🐉 玄幻修仙</button>
+        <button class="btn btn-template" data-template="科幻末世">🤖 科幻末世</button>
+        <button class="btn btn-template" data-template="悬疑推理">🔍 悬疑推理</button>
+        <button class="btn btn-template" data-template="都市异能">🌆 都市异能</button>
+        <span style="color:var(--text-muted);margin:0 4px">|</span>
+        <button class="btn btn-guided" id="guided-chat-btn">
+          💬 AI 帮我想
+        </button>
+        <span style="color:var(--text-muted);margin:0 4px">|</span>
+        <button class="btn btn-secondary btn-sm" id="save-template-btn">💾 保存为模板</button>
+      </div>
+      <div id="custom-templates-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;min-height:0"></div>
+
+      <!-- 小说参数 -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">📋 小说设置</div>
+          <div class="form-group">
+            <label>小说主题</label>
+            <input type="text" id="novel-topic" placeholder="例：一位失忆的剑客在末世寻找自己的身世之谜">
+          </div>
+          <div class="form-group">
+            <label>小说类型/风格</label>
+            <input type="text" id="novel-genre" value="玄幻" placeholder="玄幻/科幻/言情/悬疑">
+          </div>
+          <div class="two-col">
+            <div class="form-group">
+              <label>章节数</label>
+              <input type="number" id="novel-chapters" value="5" min="1" max="200">
+            </div>
+            <div class="form-group">
+              <label>每章字数</label>
+              <input type="number" id="novel-wordcount" value="2000" min="500" max="50000" step="500">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>内容指导 (可选)</label>
+            <textarea id="novel-guidance" rows="3" placeholder="对小说内容的额外要求，如：希望有反转结局、主角性格傲娇等。支持多行输入。"></textarea>
+          </div>
+
+          <!-- 高级生成选项 (折叠) -->
+          <div class="collapsible-header" onclick="toggleCollapsible(this)" style="margin-top:8px">
+            <span style="font-size:0.85rem;color:var(--text-secondary)">🎨 高级生成选项</span>
+            <span class="arrow">▶</span>
+          </div>
+          <div class="collapsible-body">
+            <div class="two-col" style="margin-top:8px">
+              <div class="form-group">
+                <label>语言风格</label>
+                <select id="novel-lang-style">
+                  <option value="">默认</option>
+                  <option value="口语化，对话自然流畅">口语化</option>
+                  <option value="书面语，文笔优美典雅">书面语</option>
+                  <option value="古风，仿明清白话小说">古风</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>情感基调</label>
+                <select id="novel-emotion">
+                  <option value="">默认</option>
+                  <option value="整体氛围热血激昂，鼓舞人心">热血</option>
+                  <option value="基调悲伤，引人深思">悲情</option>
+                  <option value="轻松幽默，读起来轻松愉快">轻松</option>
+                  <option value="悬疑紧张，保持神秘感">悬疑</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:8px">
+              <label>内容禁忌（避免出现的元素）</label>
+              <input type="text" id="novel-taboos" placeholder="如：血腥描写、色情内容、政治敏感话题">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🎭 角色与场景 (可选)</div>
+          <div class="form-group">
+            <label>涉及角色</label>
+            <input type="text" id="novel-characters" placeholder="主角：林夕，18岁，银发紫瞳...">
+          </div>
+          <div class="form-group">
+            <label>关键道具</label>
+            <input type="text" id="novel-items" placeholder="神秘的玉佩、远古神剑">
+          </div>
+          <div class="form-group">
+            <label>场景地点</label>
+            <input type="text" id="novel-location" placeholder="末日废城、星海学院">
+          </div>
+          <div class="form-group">
+            <label>时间背景</label>
+            <input type="text" id="novel-time" placeholder="公元3024年 / 大周王朝">
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+        <button class="btn btn-primary btn-lg" id="novel-start-btn">🚀 开始生成小说</button>
+        <span id="novel-status" style="color:var(--text-secondary);font-size:0.9rem"></span>
+      </div>
+
+      <!-- 进度 -->
+      <div class="progress-container" id="novel-progress" style="display:none">
+        <div class="progress-bar">
+          <div class="progress-fill" id="novel-progress-fill"></div>
+        </div>
+        <div class="progress-text" id="novel-progress-text">初始化...</div>
+      </div>
+
+      <!-- 结果（流式更新） -->
+      <div id="novel-result" class="result-panel" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="color:var(--accent-2)">📖 <span id="novel-result-title">生成结果</span></h3>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" id="novel-copy-btn">📋 复制全文</button>
+            <button class="btn btn-secondary btn-sm" id="novel-save-btn">💾 保存草稿</button>
+            <button class="btn btn-primary btn-sm" id="novel-continue-btn">✍️ 续写</button>
+          </div>
+        </div>
+        <div id="novel-stream-content"></div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Tab 2: 生成漫画 -->
+    <!-- ============================================================ -->
+    <div class="tab-content" id="tab-comic" role="tabpanel">
+
+      <!-- API 配置 -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="collapsible-header" onclick="toggleCollapsible(this)">
+          <span>🔑 万相 API 配置</span>
+          <span class="arrow">▼</span>
+        </div>
+        <div class="collapsible-body">
+          <div class="form-group">
+            <label>API Key</label>
+            <input type="password" id="comic-api-key" placeholder="sk-ws-H.xxxxxxxxxxxxxxxxxxxx">
+          </div>
+          <div class="two-col">
+            <div class="form-group">
+              <label>选择模型</label>
+              <select id="comic-model"></select>
+            </div>
+            <div class="form-group">
+              <label>API 地址</label>
+              <input type="text" id="comic-api-url" placeholder="默认为标准 DashScope 地址">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-secondary btn-sm" id="comic-test-btn">🧪 测试连接</button>
+            <span id="comic-test-result" style="font-size:0.85rem;color:var(--text-secondary)"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 漫画参数 -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">🎨 漫画设置</div>
+          <div class="form-group">
+            <label>漫画风格</label>
+            <select id="comic-style"></select>
+          </div>
+          <div class="two-col">
+            <div class="form-group">
+              <label>分辨率</label>
+              <select id="comic-size">
+                <option value="2K (2048*2048)">2K (2048x2048) 推荐</option>
+                <option value="1K (1024*1024)">1K (1024x1024) 快速</option>
+                <option value="4K (4096*4096)">4K (4096x4096) 细腻</option>
+                <option value="手机竖屏 720*1280">📱 手机竖屏 720×1280</option>
+                <option value="手机竖屏 1080*1920">📱 手机竖屏 1080×1920</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>排版风格</label>
+              <select id="comic-layout"></select>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="form-group">
+              <label>随机种子</label>
+              <input type="number" id="comic-seed" value="-1" min="-1" max="2147483647">
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:6px;margin-top:20px">
+                <input type="checkbox" id="comic-thinking" checked> 思考模式
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;margin-top:4px;color:var(--text-muted);font-size:0.85rem">
+                <input type="checkbox" id="comic-economy"> 💰 经济模式
+                <span title="每3格合并为1次API调用，节省60%+费用" style="cursor:help">ℹ️</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 参考图上传 -->
+          <div class="form-group">
+            <label>角色参考图 (可选)</label>
+            <div class="drop-zone" id="comic-dropzone">
+              <div>点击或拖拽上传角色正面照</div>
+              <img class="preview" id="comic-preview" alt="preview">
+            </div>
+            <input type="file" id="comic-ref-input" accept="image/*" style="display:none">
+          </div>
+
+          <div class="form-group" style="margin-top:16px">
+            <label>分镜描述 <span style="color:var(--text-muted);font-weight:400">(每行一帧，至少 2 行)</span></label>
+            <textarea id="comic-prompts" rows="6" placeholder="一个女孩在卧室醒来，阳光照进窗户&#10;她走进厨房开始做早餐&#10;她在公园的长椅上安静地看书&#10;她在咖啡店里和朋友聊天"></textarea>
+          </div>
+
+          <button class="btn btn-primary btn-lg btn-block" id="comic-start-btn" style="margin-top:12px">🎨 生成漫画</button>
+        </div>
+
+        <!-- 右侧：结果 -->
+        <div class="card">
+          <div class="card-title">🖼️ 生成结果</div>
+          <div id="comic-gallery">
+            <div class="empty-state">
+              <div class="icon">🎨</div>
+              <p>填写左侧参数，点击生成</p>
+            </div>
+          </div>
+          <div id="comic-status" style="margin-top:8px;font-size:0.85rem;color:var(--text-secondary)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Tab 3: 流水线 小说→漫画 -->
+    <!-- ============================================================ -->
+    <div class="tab-content" id="tab-pipeline" role="tabpanel">
+
+      <!-- 三步引导 -->
+      <div class="steps" id="pipeline-steps">
+        <div class="step active" data-step="1">
+          <div class="step-num">1</div>
+          <div>选择小说</div>
+        </div>
+        <div class="step" data-step="2">
+          <div class="step-num">2</div>
+          <div>提取场景</div>
+        </div>
+        <div class="step" data-step="3">
+          <div class="step-num">3</div>
+          <div>生成漫画</div>
+        </div>
+      </div>
+
+      <!-- Step 1: 选择小说 -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">📂 第一步：选择小说来源</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group">
+              <label>LLM (用于场景提取)</label>
+              <select id="pipe-llm-interface">
+                <option value="OpenAI">OpenAI 兼容</option>
+                <option value="DeepSeek">DeepSeek</option>
+                <option value="Gemini">Gemini</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <input type="text" id="pipe-llm-key" placeholder="LLM API Key 用于场景提取">
+            </div>
+            <div class="form-group">
+              <select id="pipe-llm-model">
+                <option value="deepseek-v4-flash">deepseek-v4-flash</option>
+                <option value="gpt-4">gpt-4</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn btn-secondary" id="pipe-load-novel">📂 加载已有小说</button>
+            <div style="font-size:0.8rem;color:var(--text-muted)">
+              或手动粘贴小说章节文本：
+            </div>
+            <textarea id="pipe-novel-text" rows="5" placeholder="在此粘贴小说章节内容..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: 提取场景 -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">🎬 第二步：提取关键场景</div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <button class="btn btn-success" id="pipe-extract-btn">🔍 提取场景</button>
+          <span id="pipe-extract-status" style="font-size:0.85rem;color:var(--text-secondary)"></span>
+        </div>
+        <div id="pipe-scenes" style="margin-top:12px"></div>
+      </div>
+
+      <!-- Step 3: 生成漫画 -->
+      <div class="card">
+        <div class="card-title">🎨 第三步：生成漫画</div>
+        <div class="two-col">
+          <div>
+            <div class="form-group">
+              <label>万相 API Key</label>
+              <input type="password" id="pipe-wanxiang-key">
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label>风格</label>
+                <select id="pipe-style"></select>
+              </div>
+              <div class="form-group">
+                <label>排版</label>
+                <select id="pipe-layout"></select>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-lg btn-block" id="pipe-generate-btn">🚀 从场景生成漫画</button>
+          </div>
+          <div>
+            <div id="pipe-gallery">
+              <div class="empty-state">
+                <div class="icon">🔗</div>
+                <p>提取场景后即可生成漫画</p>
+              </div>
+            </div>
+            <div id="pipe-status" style="margin-top:8px;font-size:0.85rem;color:var(--text-secondary)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Tab 4: 草稿箱 -->
+    <!-- ============================================================ -->
+    <div class="tab-content" id="tab-drafts" role="tabpanel">
+      <!-- 内部子标签切换 -->
+      <nav class="drafts-subnav" style="display:flex;gap:4px;margin-bottom:16px">
+        <button class="drafts-subtab active" data-subtab="novels">📖 小说</button>
+        <button class="drafts-subtab" data-subtab="templates">📋 模板</button>
+        <button class="drafts-subtab" data-subtab="chats">💬 对话</button>
+      </nav>
+
+      <!-- 子面板：小说 -->
+      <div class="drafts-subtab-content" id="drafts-sub-novels" style="display:block">
+        <div class="card" style="margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:0">📖 已保存小说</div>
+            <button class="btn btn-secondary btn-sm" id="drafts-refresh-btn">🔄 刷新</button>
+          </div>
+          <div id="drafts-stats" style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px"></div>
+          <div class="drafts-grid" id="drafts-list">
+            <div class="empty-state" style="padding:40px;text-align:center;color:var(--text-muted)">
+              <div class="icon" style="font-size:2.5rem">📭</div>
+              <p style="margin-top:8px">还没有保存的小说</p>
+              <p style="font-size:0.85rem;margin-top:4px">去「生成小说」Tab 创作一部作品吧</p>
+            </div>
+          </div>
+        </div>
+        <!-- 草稿阅览区 -->
+        <div id="drafts-viewer" class="result-panel" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="color:var(--accent-2)">📖 <span id="drafts-viewer-title">加载结果</span></h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-secondary btn-sm" id="drafts-viewer-back">← 返回列表</button>
+              <button class="btn btn-primary btn-sm" id="drafts-viewer-continue">✍️ 续写</button>
+              <button class="btn btn-secondary btn-sm" id="drafts-viewer-toggle-all">📑 全部折叠</button>
+              <button class="btn btn-secondary btn-sm" id="drafts-viewer-copy">📋 复制全文</button>
+            </div>
+          </div>
+          <div id="drafts-viewer-content"></div>
+        </div>
+      </div>
+
+      <!-- 子面板：模板 -->
+      <div class="drafts-subtab-content" id="drafts-sub-templates" style="display:none">
+        <div class="card" style="margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:0">📋 我的模板</div>
+            <button class="btn btn-secondary btn-sm" id="drafts-templates-refresh-btn">🔄 刷新</button>
+          </div>
+          <div class="drafts-grid" id="drafts-templates-list">
+            <div class="empty-state" style="padding:40px;text-align:center;color:var(--text-muted)">
+              <div class="icon" style="font-size:2.5rem">📋</div>
+              <p style="margin-top:8px">还没有自定义模板</p>
+              <p style="font-size:0.85rem;margin-top:4px">在「生成小说」Tab 填好设置后点击「💾 保存为模板」</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 子面板：对话 -->
+      <div class="drafts-subtab-content" id="drafts-sub-chats" style="display:none">
+        <div class="card" style="margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:0">💬 对话记录</div>
+            <button class="btn btn-secondary btn-sm" id="drafts-chats-refresh-btn">🔄 刷新</button>
+          </div>
+          <div class="drafts-grid" id="drafts-chats-list">
+            <div class="empty-state" style="padding:40px;text-align:center;color:var(--text-muted)">
+              <div class="icon" style="font-size:2.5rem">💬</div>
+              <p style="margin-top:8px">还没有保存的对话</p>
+              <p style="font-size:0.85rem;margin-top:4px">在「AI 帮我想」对话框中可以保存对话记录</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- 引导式创作对话框 -->
+    <div class="modal-overlay" id="guided-modal" style="display:none">
+      <div class="modal-content chat-modal">
+        <div class="modal-header">
+          <h3>💬 AI 引导创作</h3>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-xs" id="chat-save-btn">💾 保存对话</button>
+            <button class="btn btn-secondary btn-xs" id="chat-load-btn">📂 历史对话</button>
+            <button class="modal-close" id="guided-modal-close">✕</button>
+          </div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-msg assistant">
+            <div class="msg-avatar">🤖</div>
+            <div class="msg-bubble">
+              你好！我是你的创作助手。让我一步步帮你构思小说吧~<br><br>
+              首先，**你想写什么类型的小说？**（比如：玄幻修仙、科幻末世、悬疑推理、都市异能、历史军事、恋爱言情...）
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <textarea id="chat-input" rows="1" placeholder="输入你的回答..." oninput="autoResizeChatInput(this)"></textarea>
+          <button class="btn btn-primary btn-sm" id="chat-send-btn">发送</button>
+        </div>
+        <div class="chat-outline-area" id="chat-outline-area" style="display:none">
+          <div class="chat-outline-preview" id="chat-outline-preview"></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-primary" id="chat-confirm-btn">✅ 确认使用此大纲</button>
+            <button class="btn btn-secondary" id="chat-retry-btn">🔄 重新生成</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 续写对话框（增强版） -->
+    <div class="modal-overlay" id="continue-modal" style="display:none">
+      <div class="modal-content" style="max-width:600px">
+        <div class="modal-header">
+          <h3>✍️ 续写小说</h3>
+          <button class="modal-close" id="continue-modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="continue-info" style="margin-bottom:16px;font-size:0.9rem;color:var(--text-secondary)"></div>
+
+          <!-- 续写位置 -->
+          <div class="form-group">
+            <label>续写位置</label>
+            <select id="continue-insert-after">
+              <option value="-1">追加到末尾</option>
+              <!-- 动态填充章节选项 -->
+            </select>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+              选择「追加到末尾」在最后一章后继续；选择「第 N 章后」在中间插入新章节
+            </div>
+          </div>
+
+          <!-- 参考章节 -->
+          <div class="form-group">
+            <label>参考章节（AI 将阅读这些章节作为上下文）</label>
+            <div id="continue-chapter-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--glass-border);border-radius:8px;padding:8px;background:rgba(0,0,0,0.1)">
+              <!-- 动态生成复选框 -->
+            </div>
+            <div style="margin-top:6px;display:flex;gap:8px">
+              <button class="btn btn-xs btn-secondary" id="continue-select-all" type="button">✅ 全选</button>
+              <button class="btn btn-xs btn-secondary" id="continue-deselect-all" type="button">⬜ 取消全选</button>
+            </div>
+          </div>
+
+          <div class="two-col" style="margin-top:16px">
+            <div class="form-group">
+              <label>续写章节数</label>
+              <input type="number" id="continue-chapters" value="3" min="1" max="50">
+            </div>
+            <div class="form-group">
+              <label>内容禁忌（可选）</label>
+              <input type="text" id="continue-taboos" placeholder="避免出现的元素">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>续写方向（可选，描述剧情走向或要补充的内容）</label>
+            <textarea id="continue-guidance" rows="3" placeholder="例如：主角开始调查神秘组织的真相，揭开更大的阴谋..."></textarea>
+          </div>
+          <button class="btn btn-primary btn-lg btn-block" id="continue-start-btn">🚀 开始续写</button>
+          <div id="continue-status" style="margin-top:12px;font-size:0.85rem;color:var(--text-secondary)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Tab 5: 小红书带货 -->
+    <!-- ============================================================ -->
+    <div class="tab-content" id="tab-xhs" role="tabpanel">
+
+      <!-- 步骤指示器 -->
+      <div class="steps" id="xhs-steps">
+        <div class="step active" data-step="1"><div class="step-num">1</div><div>分析商品</div></div>
+        <div class="step" data-step="2"><div class="step-num">2</div><div>生成内容</div></div>
+        <div class="step" data-step="3"><div class="step-num">3</div><div>生成漫画</div></div>
+        <div class="step" data-step="4"><div class="step-num">4</div><div>发布</div></div>
+      </div>
+
+      <!-- 项目保存/导入工具栏 -->
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px;align-items:center">
+        <span style="font-size:0.8rem;color:var(--text-muted);margin-right:auto">
+          <span id="xhs-project-status">暂无项目</span>
+        </span>
+        <button class="btn btn-sm btn-secondary" id="xhs-save-btn" disabled>💾 保存项目</button>
+        <button class="btn btn-sm btn-secondary" id="xhs-load-btn">📂 导入项目</button>
+        <input type="file" id="xhs-load-input" accept=".json" style="display:none">
+      </div>
+
+      <div class="two-col">
+        <!-- 左侧：设置 -->
+        <div>
+          <!-- LLM 配置 -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">⚙️ LLM 配置 <small style="color:var(--text-muted);font-weight:400">(商品分析+文案生成)</small></div>
+            <div class="form-group">
+              <label>接口类型</label>
+              <select id="xhs-llm-interface">
+                <option value="OpenAI">OpenAI 兼容（推荐 GPT-4o）</option>
+                <option value="DeepSeek">DeepSeek</option>
+                <option value="Gemini">Gemini</option>
+                <option value="阿里云百炼">阿里云百炼</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" id="xhs-llm-key" placeholder="LLM API Key（推荐使用支持多模态的模型如 GPT-4o）">
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label>模型名</label>
+                <input type="text" id="xhs-llm-model" value="gpt-4o" placeholder="gpt-4o / deepseek-v4-flash">
+              </div>
+              <div class="form-group">
+                <label>API 地址 (可选)</label>
+                <input type="text" id="xhs-llm-url" placeholder="留空使用默认">
+              </div>
+            </div>
+          </div>
+
+          <!-- 万相配置 -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">🎨 万相配置 <small style="color:var(--text-muted);font-weight:400">(漫画生成)</small></div>
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" id="xhs-wanxiang-key" placeholder="万相 API Key">
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label>模型</label>
+                <select id="xhs-model">
+                  <option value="wan2.7-image-pro">wan2.7-image-pro</option>
+                  <option value="wan2.7-image">wan2.7-image</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>API 地址 (可选)</label>
+                <input type="text" id="xhs-wanxiang-url" placeholder="留空使用默认">
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label>风格</label>
+                <select id="xhs-style"></select>
+              </div>
+              <div class="form-group">
+                <label>排版</label>
+                <select id="xhs-layout"></select>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="form-group">
+                <label>分辨率</label>
+                <select id="xhs-size">
+                  <option value="2K (2048*2048)">2K (2048x2048) 推荐</option>
+                  <option value="1K (1024*1024)">1K (1024x1024) 快速</option>
+                  <option value="4K (4096*4096)">4K (4096x4096) 细腻</option>
+                  <option value="手机竖屏 720*1280">📱 手机竖屏 720×1280</option>
+                  <option value="手机竖屏 1080*1920">📱 手机竖屏 1080×1920</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>种子</label>
+                <input type="number" id="xhs-seed" value="-1" min="-1" max="2147483647">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>商品参考图 <span style="color:var(--text-muted);font-weight:400">(可选，上传后漫画角色会参考此图保持一致性)</span></label>
+              <div class="drop-zone" id="xhs-ref-dropzone" style="padding:12px;min-height:60px">
+                <div style="font-size:0.85rem">点击或拖拽商品原型图</div>
+                <img class="preview" id="xhs-ref-preview" alt="ref">
+              </div>
+              <input type="file" id="xhs-ref-file-input" accept="image/*" style="display:none">
+            </div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px">
+              <label style="display:flex;align-items:center;gap:6px">
+                <input type="checkbox" id="xhs-thinking" checked> 思考模式
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:0.85rem">
+                <input type="checkbox" id="xhs-economy"> 💰 经济模式（合并2格，省40%费用，质量略降）
+                <span title="每3格合并为1次API调用，显著降低成本" style="cursor:help">ℹ️</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Step 1: 上传商品 / 填写描述 -->
+          <div class="card" style="margin-bottom:16px" id="xhs-step1">
+            <div class="card-title">📸 第一步：录入商品信息</div>
+
+            <!-- 输入模式切换 -->
+            <div style="display:flex;gap:0;margin-bottom:12px;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+              <button class="xhs-input-mode active" data-mode="image" style="flex:1;padding:8px;border:none;background:var(--accent-1);color:#fff;cursor:pointer;font-size:0.9rem">📸 图片分析</button>
+              <button class="xhs-input-mode" data-mode="text" style="flex:1;padding:8px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:0.9rem">📝 文字描述</button>
+            </div>
+
+            <!-- 图片模式 -->
+            <div id="xhs-input-image">
+              <div class="drop-zone" id="xhs-dropzone">
+                <div>点击或拖拽上传商品图片（需支持多模态的 LLM 如 GPT-4o）</div>
+                <img class="preview" id="xhs-preview" alt="preview">
+              </div>
+              <input type="file" id="xhs-ref-input" accept="image/*" style="display:none">
+            </div>
+
+            <!-- 文字模式（默认隐藏） -->
+            <div id="xhs-input-text" style="display:none">
+              <!-- AI 智能填写 -->
+              <div style="background:rgba(0,0,0,0.15);border-radius:8px;padding:12px;margin-bottom:16px">
+                <div style="font-size:0.9rem;font-weight:600;margin-bottom:6px">🤖 AI 智能填写</div>
+                <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px">
+                  粘贴商品链接、电商详情页、产品介绍等，AI 自动提取并填写下方表单
+                </div>
+                <textarea id="xhs-smart-input" rows="3" placeholder="例如：这款智能保温杯采用316不锈钢内胆，48小时超长保温，一键开盖设计，适合办公室、户外旅行使用...&#10;或粘贴淘宝/京东/拼多多商品详情页文案"></textarea>
+                <button class="btn btn-sm btn-primary" id="xhs-smart-fill-btn" style="margin-top:8px">🤖 AI 智能填写</button>
+                <div id="xhs-smart-status" style="margin-top:6px;font-size:0.8rem;color:var(--text-secondary)"></div>
+                <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;font-size:0.8rem;color:var(--text-muted)">
+                  填写后请检查并修改，然后点击「分析商品」
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>商品名称 <span style="color:var(--text-muted);font-weight:400">(必填)</span></label>
+                <input type="text" id="xhs-prod-name" placeholder="例如：智能保温杯 Pro Max">
+              </div>
+              <div class="form-group">
+                <label>商品类别</label>
+                <input type="text" id="xhs-prod-category" placeholder="例如：家居/数码/美妆/食品">
+              </div>
+              <div class="form-group">
+                <label>核心卖点 <span style="color:var(--text-muted);font-weight:400">(每行一个)</span></label>
+                <textarea id="xhs-prod-features" rows="3" placeholder="316不锈钢内胆&#10;48小时保温&#10;一键开盖"></textarea>
+              </div>
+              <div class="form-group">
+                <label>使用场景</label>
+                <input type="text" id="xhs-prod-scenarios" placeholder="例如：办公室、户外、居家（逗号分隔）">
+              </div>
+              <div class="two-col">
+                <div class="form-group">
+                  <label>颜色/设计风格</label>
+                  <input type="text" id="xhs-prod-style" placeholder="例如：极简白、ins风">
+                </div>
+                <div class="form-group">
+                  <label>目标人群</label>
+                  <input type="text" id="xhs-prod-audience" placeholder="例如：上班族、宝妈">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>补充描述 <span style="color:var(--text-muted);font-weight:400">(可选，任何你想强调的信息)</span></label>
+                <textarea id="xhs-prod-extra" rows="2" placeholder="比如材质、工艺、品牌故事等"></textarea>
+              </div>
+            </div>
+
+            <button class="btn btn-primary btn-block" id="xhs-analyze-btn" style="margin-top:12px">🔍 分析商品</button>
+            <div id="xhs-product-result" style="margin-top:12px"></div>
+          </div>
+
+          <!-- Step 2: 生成内容 -->
+          <div class="card" style="margin-bottom:16px" id="xhs-step2">
+            <div class="card-title">📝 第二步：生成带货内容</div>
+            <button class="btn btn-success btn-block" id="xhs-generate-btn">📝 生成带货内容</button>
+            <div id="xhs-content-result" style="margin-top:12px"></div>
+            <div id="xhs-scenes-display" style="margin-top:12px"></div>
+          </div>
+
+          <!-- Step 3: 生成漫画 -->
+          <div class="card" style="margin-bottom:16px" id="xhs-step3">
+            <div class="card-title">🎨 第三步：生成带货漫画</div>
+            <button class="btn btn-primary btn-lg btn-block" id="xhs-comic-btn">🎨 生成漫画</button>
+            <div id="xhs-comic-status" style="margin-top:8px;font-size:0.85rem;color:var(--text-secondary)"></div>
+          </div>
+
+          <!-- Step 4: 发布 -->
+          <div class="card" id="xhs-step4">
+            <div class="card-title">📤 第四步：发布到小红书</div>
+            <div id="xhs-publish-status" style="margin-bottom:8px;font-size:0.85rem"></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-warning" id="xhs-login-btn" style="display:none">🔑 登录小红书</button>
+              <button class="btn btn-primary btn-lg" id="xhs-publish-btn" style="flex:1">📤 发布到小红书</button>
+              <button class="btn btn-secondary" id="xhs-copy-btn">📋 复制文案</button>
+            </div>
+            <div id="xhs-publish-result" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <!-- 右侧：结果预览 -->
+        <div>
+          <div class="card">
+            <div class="card-title">🖼️ 漫画预览</div>
+            <div id="xhs-comic-gallery">
+              <div class="empty-state">
+                <div class="icon">🛍️</div>
+                <p>上传商品图 → 分析 → 生成内容 → 生成漫画</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 小红书 Cookie 提取弹窗 -->
+  <div id="xhs-cookie-overlay" class="modal-overlay" style="display:none">
+    <div id="xhs-cookie-modal" class="modal" style="max-width:680px">
+      <div class="modal-header">
+        <span style="font-size:1.2rem;font-weight:700">🔑 登录小红书</span>
+        <button class="modal-close" onclick="hideCookieDialog()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:20px">
+        <div id="xhs-cookie-msg" style="margin-bottom:12px"></div>
+
+        <div style="margin-bottom:16px">
+          <div style="font-weight:600;margin-bottom:8px">📋 使用说明</div>
+          <ol style="margin:0;padding-left:20px;line-height:1.8;color:var(--text-secondary)">
+            <li>点击下方「打开小红书登录页」按钮</li>
+            <li>在打开的浏览器页面中登录小红书账号</li>
+            <li>登录后回到这里，点击「一键提取 Cookies」自动提取</li>
+            <li>如果自动提取失败，可手动导出 Cookies 粘贴到文本框</li>
+          </ol>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <button class="btn btn-warning" id="xhs-open-browser-btn" style="flex:1">
+            🌐 打开小红书登录页
+          </button>
+          <button class="btn btn-success" id="xhs-extract-btn" style="flex:1">
+            ⚡ 一键提取 Cookies
+          </button>
+        </div>
+
+        <div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-weight:600;font-size:0.9rem">📝 手动粘贴 Cookies（JSON 格式）</span>
+            <span style="font-size:0.75rem;color:var(--text-muted)">
+              F12 → Application → Cookies → 导出
+            </span>
+          </div>
+          <textarea id="xhs-cookie-textarea" class="input" rows="6"
+            placeholder='[{&quot;name&quot;: &quot;a1&quot;, &quot;value&quot;: &quot;...&quot;, &quot;domain&quot;: &quot;.xiaohongshu.com&quot;, &quot;path&quot;: &quot;/&quot;, &quot;expires&quot;: 1811138360, &quot;httpOnly&quot;: false, &quot;secure&quot;: false}]'
+            style="width:100%;font-family:monospace;font-size:0.8rem;resize:vertical"></textarea>
+        </div>
+
+        <button class="btn btn-primary btn-block" id="xhs-save-cookie-btn">
+          💾 保存 Cookies
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js?v=7"></script>
+  <script src="/js/novel.js?v=6"></script>
+  <script src="/js/drafts.js?v=6"></script>
+  <script src="/js/comic.js?v=6"></script>
+  <script src="/js/pipeline.js?v=6"></script>
+  <script src="/js/xhs.js?v=2"></script>
+</body>
+</html>

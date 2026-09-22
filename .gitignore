@@ -1,0 +1,55 @@
+﻿# Database
+data/
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.venv
+venv/
+
+# Apifox token (from env, never commit)
+*.env.local
+.env.apifox
+
+# Generated
+generated_novels/
+logs/
+temp_images/
+images/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+.pytest_cache/
+*.pyc
+娴嬭瘯鎶ュ憡_*.html
+
+# Misc
+app.log
+*.log
+鍚姩.bat
+鍋滄.cmd
+setup.bat
+_temp_kill.py
+.mypy_cache/
+
+
+# Personal
+简历写作要求.txt
+
+# Fonts (too large for git)
+fonts/
+

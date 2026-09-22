@@ -1,0 +1,17 @@
+﻿# StoryDiffusion 小说漫画工作室
+# 零 langchain/pydantic v1 依赖，兼容 Python 3.14
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+sse-starlette>=1.8.0
+python-multipart>=0.0.9
+Pillow>=10.0.0
+requests>=2.31.0
+numpy>=1.24.0
+openai>=1.0.0
+google-genai>=1.0.0
+azure-ai-inference>=1.0.0
+nltk>=3.8.0
+
+# Test
+pytest>=8.0.0
+httpx>=0.27.0
